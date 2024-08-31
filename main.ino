@@ -3,26 +3,25 @@
 #include <BluetoothSerial.h>
 
 // Motor pins
-#define RIN1 33  // Right motor direction pin 1
-#define RIN2 25  // Right motor direction pin 2
-#define RPWM 32  // Right motor PWM pin
-#define LIN1 22  // Left motor direction pin 1
-#define LIN2 21  // Left motor direction pin 2
-#define LPWM 23  // Left motor PWM pin
-#define RBUT 35  // Right button pin
-#define LBUT 34  // Left button pin
-
+#define RIN1 33 // Right motor direction pin 1
+#define RIN2 25 // Right motor direction pin 2
+#define RPWM 32 // Right motor PWM pin
+#define LIN1 22 // Left motor direction pin 1
+#define LIN2 21 // Left motor direction pin 2
+#define LPWM 23 // Left motor PWM pin
+#define RBUT 35 // Right button pin
+#define LBUT 34 // Left button pin
 
 uint8_t array_size = 8;
 uint16_t sensor_values[array_size];
 
 // PID calculation variables
-int last_error = 0;                              // Last error value for PID calculation
-int P = 0, I = 0, D = 0;                         // PID terms
-float Kp = 4.315, Ki = 0.0, Kd = 50;             // PID constants
-int center_position = 3500;                      // Default center position
-uint8_t MAX_SPEED_R = 150, MAX_SPEED_L = 150;    // Maximum speed for motors
-uint8_t BASE_SPEED_R = 130, BASE_SPEED_L = 130;  // Base speed for motors
+int last_error = 0; // Last error value for PID calculation
+int P = 0, I = 0, D = 0; // PID terms
+float Kp = 4.315, Ki = 0.0, Kd = 50; // PID constants
+int center_position = 3500; // Default center position
+uint8_t MAX_SPEED_R = 150, MAX_SPEED_L = 150; // Maximum speed for motors
+uint8_t BASE_SPEED_R = 130, BASE_SPEED_L = 130; // Base speed for motors
 
 // Create QTR object for IR
 QTRSensors qtr;
@@ -31,8 +30,8 @@ QTRSensors qtr;
 BluetoothSerial SerialBT;
 
 // Create motor objects
-Motor motor_r = Motor(RIN1, RIN2, RPWM, 1, 99);  // Right motor
-Motor motor_l = Motor(LIN1, LIN2, LPWM, 1, 99);  // Left motor
+Motor motor_r = Motor(RIN1, RIN2, RPWM, 1, 99); // Right motor
+Motor motor_l = Motor(LIN1, LIN2, LPWM, 1, 99); // Left motor
 
 /**
  * @brief Sets the speed for both motors.
@@ -93,19 +92,28 @@ void pid_control() {
 void setup() {
   // Setup IR sensors
   qtr.setTypeRC();
-  qtr.setSensorPins((const uint8_t[]){ 17, 5, 26, 27, 14, 13, 4, 16 }, array_size);
+  qtr.setSensorPins((const uint8_t[]) {
+    17,
+    5,
+    26,
+    27,
+    14,
+    13,
+    4,
+    16
+  }, array_size);
 
   // Start Serial monitor and Bluetooth serial
   Serial.begin(9600);
   SerialBT.begin("ESP32-A");
 
   // Setup Motor pins
-  pinMode(RIN1, OUTPUT);  // Right motor direction pin 1
-  pinMode(RIN2, OUTPUT);  // Right motor direction pin 2
-  pinMode(RPWM, OUTPUT);  // Right motor PWM pin
-  pinMode(LIN1, OUTPUT);  // Left motor direction pin 1
-  pinMode(LIN2, OUTPUT);  // Left motor direction pin 2
-  pinMode(LPWM, OUTPUT);  // Left motor PWM pin
+  pinMode(RIN1, OUTPUT); // Right motor direction pin 1
+  pinMode(RIN2, OUTPUT); // Right motor direction pin 2
+  pinMode(RPWM, OUTPUT); // Right motor PWM pin
+  pinMode(LIN1, OUTPUT); // Left motor direction pin 1
+  pinMode(LIN2, OUTPUT); // Left motor direction pin 2
+  pinMode(LPWM, OUTPUT); // Left motor PWM pin
 
   // Initialize motors but stop initially
   motor_r.brake();
@@ -113,18 +121,18 @@ void setup() {
   delay(2);
 
   // Setup Buttons
-  pinMode(RBUT, INPUT);  // Right button
-  pinMode(LBUT, INPUT);  // Left button
+  pinMode(RBUT, INPUT); // Right button
+  pinMode(LBUT, INPUT); // Left button
 
   // Calibrate IR sensors
   delay(300);
   for (int i = 0; i < 100; i++) {
-    set_motor_speed(100, -100);  // Clockwise calibration
+    set_motor_speed(100, -100); // Clockwise calibration
     qtr.calibrate();
   }
 
   for (int i = 0; i < 100; i++) {
-    set_motor_speed(-100, 100);  // Anticlockwise calibration
+    set_motor_speed(-100, 100); // Anticlockwise calibration
     qtr.calibrate();
   }
 }
@@ -138,7 +146,7 @@ void setup() {
  * @param command The command received via Bluetooth.
  */
 void bluetooth_command_handler(String command) {
-  command.trim();  // Remove any leading or trailing whitespace
+  command.trim(); // Remove any leading or trailing whitespace
 
   if (command.startsWith("kp ")) {
     float value = command.substring(3).toFloat();
@@ -189,21 +197,15 @@ void bluetooth_command_handler(String command) {
  * @references pid_control
  */
 void loop() {
+  // Check 90 degree turns
   int current_position = qtr.readLineBlack(sensor_values);
   if (current_position == 0) {
-    motor_r.drive(50);
-    motor_l.drive(-50);
-
+    set_motor_speed(50, -50);
   } else if (current_position == 7000) {
-    motor_r.drive(-50);
-    motor_l.drive(50);
-
-  }
-
-  else {
+    set_motor_speed(-50, 50);
+  } else {
     pid_control();
   }
-
 
   // Check for Bluetooth serial commands
   if (SerialBT.available()) {
